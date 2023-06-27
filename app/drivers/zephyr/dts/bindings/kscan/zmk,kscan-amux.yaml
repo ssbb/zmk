@@ -1,0 +1,24 @@
+# Copyright (c) 2023 The ZMK Contributors
+# SPDX-License-Identifier: MIT
+
+description: EC keyboard matrix controller
+
+compatible: "zmk,kscan-amux"
+
+properties:
+  label:
+    type: string
+    required: true
+  en-gpios:
+    type: phandle-array
+    required: true
+  sel-gpios:
+    type: phandle-array
+    required: true
+  channels:
+    type: array
+    required: true
+  "#muxe-cells":
+    type: int
+    required: true
+    const: 0
