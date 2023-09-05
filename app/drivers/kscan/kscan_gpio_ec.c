@@ -153,6 +153,12 @@ static void kscan_ec_work_handler(struct k_work *work) {
 
     int16_t matrix_read[config->rows * config->cols];
 
+    /* Power on */
+    gpio_pin_set_dt(&config->power.spec, 1);
+
+    /* Wait for everything to power on. */
+    k_sleep(K_MSEC(2));
+
     for (int col = 0; col < config->cols; col++) {
         uint8_t ch = config->col_channels[col];
 
@@ -193,6 +199,9 @@ static void kscan_ec_work_handler(struct k_work *work) {
         }
     }
 
+    /* Power off */
+    gpio_pin_set_dt(&config->power.spec, 0);
+
     static int cnt = 0;
     if (cnt++ >= (300 / config->poll_period_ms)) {
         cnt = 0;
@@ -216,7 +225,6 @@ static void kscan_ec_work_handler(struct k_work *work) {
             const bool pressed = data->matrix_state[index];
 
             if (!pressed && matrix_read[index] > actuation_threshold[index]) {
-                LOG_ERR("ROW: %d, COL: %d", r, c);
                 data->matrix_state[index] = true;
                 data->callback(data->dev, r, c, true);
             } else if (pressed && matrix_read[index] < release_threshold[index]) {
@@ -237,6 +245,9 @@ static int kscan_ec_init(const struct device *dev) {
 
     LOG_WRN("EC Channel: %d", config->adc_channel.channel_cfg.channel_id);
     LOG_WRN("EC Channel 2: %d", config->adc_channel.channel_id);
+
+    gpio_pin_configure_dt(&config->power.spec, GPIO_OUTPUT_INACTIVE | GPIO_DS_ALT_HIGH);
+    /* gpio_pin_set_dt(&config->power.spec, 1); */
 
     data->dev = dev;
 
@@ -280,33 +291,33 @@ static int kscan_ec_init(const struct device *dev) {
 }
 
 static int kscan_ec_activity_event_handler(const struct device *dev, const zmk_event_t *eh) {
-    struct zmk_activity_state_changed *ev = as_zmk_activity_state_changed(eh);
+    /* struct zmk_activity_state_changed *ev = as_zmk_activity_state_changed(eh); */
 
-    if (ev == NULL) {
-        return -ENOTSUP;
-    }
+    /* if (ev == NULL) { */
+    /*     return -ENOTSUP; */
+    /* } */
 
-    struct kscan_ec_data *data = dev->data;
-    const struct kscan_ec_config *config = dev->config;
+    /* struct kscan_ec_data *data = dev->data; */
+    /* const struct kscan_ec_config *config = dev->config; */
 
-    uint16_t poll_period;
-    switch (ev->state) {
-    case ZMK_ACTIVITY_ACTIVE:
-        poll_period = config->poll_period_ms;
-        break;
-    case ZMK_ACTIVITY_IDLE:
-        poll_period = config->idle_poll_period_ms;
-        break;
-    case ZMK_ACTIVITY_SLEEP:
-        poll_period = config->sleep_poll_period_ms;
-        break;
-    default:
-        LOG_WRN("Unsupported activity state: %d", ev->state);
-        return -EINVAL;
-    }
+    /* uint16_t poll_period; */
+    /* switch (ev->state) { */
+    /* case ZMK_ACTIVITY_ACTIVE: */
+    /*     bool poll_period = config->poll_period_ms; */
+    /*     break; */
+    /* case ZMK_ACTIVITY_IDLE: */
+    /*     poll_period = config->idle_poll_period_ms; */
+    /*     break; */
+    /* case ZMK_ACTIVITY_SLEEP: */
+    /*     poll_period = config->sleep_poll_period_ms; */
+    /*     break; */
+    /* default: */
+    /*     LOG_WRN("Unsupported activity state: %d", ev->state); */
+    /*     return -EINVAL; */
+    /* } */
 
-    LOG_DBG("Setting poll period to %dms", poll_period);
-    k_timer_start(&data->work_timer, K_MSEC(poll_period), K_MSEC(poll_period));
+    /* LOG_DBG("Setting poll period to %dms", poll_period); */
+    /* k_timer_start(&data->work_timer, K_MSEC(poll_period), K_MSEC(poll_period)); */
 
     return 0;
 }
@@ -330,7 +341,7 @@ static const struct kscan_driver_api kscan_ec_api = {.config = kscan_ec_configur
     static struct kscan_ec_config kscan_ec_config_##n = {                                          \
         .direct = KSCAN_GPIO_LIST(kscan_ec_row_gpios_##n),                                         \
         .mux_sels = KSCAN_GPIO_LIST(kscan_ec_mux_sel_gpios_##n),                                   \
-        .mux_en = KSCAN_GPIO_GET_BY_IDX(DT_DRV_INST(n), power_gpios, 0),                           \
+        .power = KSCAN_GPIO_GET_BY_IDX(DT_DRV_INST(n), power_gpios, 0),                            \
         .mux_en = KSCAN_GPIO_GET_BY_IDX(DT_DRV_INST(n), mux_en_gpios, 0),                          \
         .discharge = KSCAN_GPIO_GET_BY_IDX(DT_DRV_INST(n), discharge_gpios, 0),                    \
         .poll_period_ms = DT_INST_PROP(n, poll_period_ms),                                         \
