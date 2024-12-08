@@ -50,8 +50,8 @@ static int behavior_send_string_init(const struct device *dev) { return 0; }
         .text = DT_INST_PROP(n, text),                                                             \
         .config = ZMK_SEND_STRING_CONFIG_DT_INST_PROP(n),                                          \
     };                                                                                             \
-    BEHAVIOR_DT_INST_DEFINE(n, behavior_send_string_init, NULL, NULL,                              \
-                            &behavior_send_string_config_##n, POST_KERNEL,                         \
-                            CONFIG_APPLICATION_INIT_PRIORITY, &behavior_send_string_driver_api);
+    BEHAVIOR_DT_INST_DEFINE(                                                                       \
+        n, behavior_send_string_init, NULL, NULL, &behavior_send_string_config_##n, POST_KERNEL,   \
+        CONFIG_KERNEL_INIT_PRIORITY_DEFAULT, &behavior_send_string_driver_api);
 
 DT_INST_FOREACH_STATUS_OKAY(SEND_STRING_INST);
