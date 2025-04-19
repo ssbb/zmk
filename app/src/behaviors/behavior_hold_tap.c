@@ -63,6 +63,8 @@ struct behavior_hold_tap_config {
     bool hold_while_undecided_linger;
     bool retro_tap;
     bool hold_trigger_on_release;
+    int32_t force_hold_key_positions_len;
+    int32_t force_hold_key_positions[ZMK_KEYMAP_LEN];
     int32_t hold_trigger_key_positions_len;
     int32_t hold_trigger_key_positions[];
 };
@@ -525,6 +527,17 @@ static void decide_positional_hold(struct active_hold_tap *hold_tap) {
     hold_tap->status = STATUS_TAP;
 }
 
+static bool is_force_hold(struct active_hold_tap *hold_tap) {
+    for (int i = 0; i < hold_tap->config->force_hold_key_positions_len; i++) {
+
+        if (hold_tap->config->force_hold_key_positions[i] ==
+            hold_tap->position_of_first_other_key_pressed) {
+            return true;
+        }
+    }
+    return false;
+}
+
 static void decide_hold_tap(struct active_hold_tap *hold_tap,
                             enum decision_moment decision_moment) {
     if (hold_tap->status != STATUS_UNDECIDED) {
@@ -542,20 +555,24 @@ static void decide_hold_tap(struct active_hold_tap *hold_tap,
         return;
     }
 
-    // If the hold-tap behavior is still undecided, attempt to decide it.
-    switch (hold_tap->config->flavor) {
-    case FLAVOR_HOLD_PREFERRED:
-        decide_hold_preferred(hold_tap, decision_moment);
-        break;
-    case FLAVOR_BALANCED:
-        decide_balanced(hold_tap, decision_moment);
-        break;
-    case FLAVOR_TAP_PREFERRED:
-        decide_tap_preferred(hold_tap, decision_moment);
-        break;
-    case FLAVOR_TAP_UNLESS_INTERRUPTED:
-        decide_tap_unless_interrupted(hold_tap, decision_moment);
-        break;
+    if (decision_moment == HT_OTHER_KEY_DOWN && is_force_hold(hold_tap)) {
+        hold_tap->status = STATUS_HOLD_INTERRUPT;
+    } else {
+        // If the hold-tap behavior is still undecided, attempt to decide it.
+        switch (hold_tap->config->flavor) {
+        case FLAVOR_HOLD_PREFERRED:
+            decide_hold_preferred(hold_tap, decision_moment);
+            break;
+        case FLAVOR_BALANCED:
+            decide_balanced(hold_tap, decision_moment);
+            break;
+        case FLAVOR_TAP_PREFERRED:
+            decide_tap_preferred(hold_tap, decision_moment);
+            break;
+        case FLAVOR_TAP_UNLESS_INTERRUPTED:
+            decide_tap_unless_interrupted(hold_tap, decision_moment);
+            break;
+        }
     }
 
     if (hold_tap->status == STATUS_UNDECIDED) {
@@ -873,6 +890,8 @@ static int behavior_hold_tap_init(const struct device *dev) {
         .hold_trigger_on_release = DT_INST_PROP(n, hold_trigger_on_release),                       \
         .hold_trigger_key_positions = DT_INST_PROP(n, hold_trigger_key_positions),                 \
         .hold_trigger_key_positions_len = DT_INST_PROP_LEN(n, hold_trigger_key_positions),         \
+        .force_hold_key_positions = DT_INST_PROP(n, force_hold_key_positions),                     \
+        .force_hold_key_positions_len = DT_INST_PROP_LEN(n, force_hold_key_positions),             \
     };                                                                                             \
     static struct behavior_hold_tap_data behavior_hold_tap_data_##n = {};                          \
     BEHAVIOR_DT_INST_DEFINE(n, behavior_hold_tap_init, NULL, &behavior_hold_tap_data_##n,          \
